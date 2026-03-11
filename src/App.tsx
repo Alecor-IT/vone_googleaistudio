@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Users, 
   History, 
@@ -13,10 +13,15 @@ import {
   RefreshCw,
   MessageSquare,
   Phone,
-  ChevronDown
+  ChevronDown,
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneMissed,
+  MoreVertical,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Contact, Category, NavItem } from './types';
+import { Contact, Category, NavItem, Call, CallType } from './types';
 
 const MOCK_CONTACTS: Contact[] = [
   { id: '1', name: 'Aaron Copland', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=aaron' },
@@ -29,11 +34,51 @@ const MOCK_CONTACTS: Contact[] = [
   { id: '8', name: 'Rosa Bartolini', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=rosa' },
 ];
 
+const MOCK_CALLS: Call[] = [
+  { id: '1', contact: { id: 'c1', name: 'Élisabeth Jacquet de La Guerre', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=elisabeth' }, type: 'incoming', timestamp: 'ven 23-05 23:34', internalInfo: 'dal tuo interno a 390' },
+  { id: '2', contact: { id: 'c2', name: 'Nadia Boulanger', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=nadia' }, type: 'missed', timestamp: 'ven 23-05 23:34', internalInfo: 'da 390 al tuo interno' },
+  { id: '3', contact: { id: 'c3', name: 'Antonio Vivaldi', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=antonio' }, type: 'incoming', timestamp: 'ven 23-05 23:34', internalInfo: 'dal tuo interno a 390' },
+  { id: '4', contact: { id: 'c4', name: 'Lili Boulanger', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=lili' }, type: 'outgoing', timestamp: 'ven 23-05 23:34', internalInfo: 'da 390 al tuo interno' },
+  { id: '5', contact: { id: 'c5', name: 'Nadia Boulanger', department: 'Marketing', status: 'busy', avatar: 'https://i.pravatar.cc/150?u=nadia' }, type: 'missed', timestamp: 'ven 23-05 23:34', internalInfo: 'da 390 al tuo interno' },
+  { id: '6', contact: { id: 'c6', name: 'Leonard Bernstein', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=leonard' }, type: 'incoming', timestamp: 'ven 23-05 23:34', internalInfo: 'dal tuo interno a 390' },
+  { id: '7', contact: { id: 'c7', name: 'John Cage', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=john' }, type: 'outgoing', timestamp: 'ven 23-05 23:34', internalInfo: 'da 390 al tuo interno' },
+  { id: '8', contact: { id: 'c8', name: 'Galina Ustvolskaya', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=galina' }, type: 'incoming', timestamp: 'ven 23-05 23:34', internalInfo: 'dal tuo interno a 390' },
+  { id: '9', contact: { id: 'c9', name: 'Rosa Bartolini', department: 'Marketing', status: 'online', avatar: 'https://i.pravatar.cc/150?u=rosa' }, type: 'missed', timestamp: 'ven 23-05 23:34', internalInfo: 'da 390 al tuo interno' },
+];
+
 export default function App() {
   const [activeNav, setActiveNav] = useState<NavItem>('Contatti');
   const [activeCategory, setActiveCategory] = useState<Category>('Tutti');
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredContact, setHoveredContact] = useState<string | null>(null);
+  const [activeCallFilter, setActiveCallFilter] = useState<'Tutte' | 'In uscita' | 'In entrata' | 'Perse'>('Tutte');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [hoveredRecent, setHoveredRecent] = useState<number | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchExpanded(false);
+      }
+    };
+
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSearchExpanded(false);
+      }
+    };
+
+    if (isSearchExpanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isSearchExpanded]);
 
   const filteredContacts = useMemo(() => {
     return MOCK_CONTACTS.filter(c => 
@@ -51,6 +96,14 @@ export default function App() {
     return groups;
   }, [filteredContacts]);
 
+  const filteredCalls = useMemo(() => {
+    if (activeCallFilter === 'Tutte') return MOCK_CALLS;
+    if (activeCallFilter === 'In uscita') return MOCK_CALLS.filter(c => c.type === 'outgoing');
+    if (activeCallFilter === 'In entrata') return MOCK_CALLS.filter(c => c.type === 'incoming');
+    if (activeCallFilter === 'Perse') return MOCK_CALLS.filter(c => c.type === 'missed');
+    return MOCK_CALLS;
+  }, [activeCallFilter]);
+
   return (
     <>
       {/* Mobile restriction message */}
@@ -62,9 +115,9 @@ export default function App() {
         >
           <Phone size={40} />
         </motion.div>
-        <h2 className="text-2xl font-bold text-[#1A1A1A] mb-3">Versione Desktop</h2>
+        <h2 className="text-2xl font-bold text-[#1A1A1A] mb-3">Versione per Mobile</h2>
         <p className="text-[#6C757D] text-lg max-w-[260px] leading-relaxed">
-          Per usarla sul telefono scarica l'app
+          Per usarla sul telefono scarica l'app dallo store
         </p>
         <div className="mt-10 flex gap-4">
           <div className="w-32 h-10 bg-black rounded-lg flex items-center justify-center text-white text-xs font-medium">App Store</div>
@@ -84,20 +137,96 @@ export default function App() {
 
             <div className="flex items-center gap-8 pl-4 flex-1">
               {/* Global Search */}
-              <div className="relative w-[267px]">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#6C757D]">
-                <Search size={18} />
-              </div>
-              <input 
-                type="text" 
-                placeholder="Cerca o Chiama..." 
-                className="w-full h-9 pl-10 pr-10 bg-[#F1F3F5] border-none rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#007BFF] transition-all"
-              />
-              <div className="absolute inset-y-0 right-3 flex items-center text-[#007BFF] cursor-pointer">
-                <Grid3X3 size={18} />
+              <div className="relative" ref={searchRef}>
+                <div className={`relative transition-all duration-300 ${isSearchExpanded ? 'w-[500px]' : 'w-[267px]'}`}>
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#6C757D]">
+                    <Search size={18} />
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="Cerca o Chiama..." 
+                    onFocus={() => setIsSearchExpanded(true)}
+                    className={`w-full h-9 pl-10 pr-10 bg-[#F1F3F5] border-none rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#007BFF] transition-all ${isSearchExpanded ? 'bg-white shadow-md' : ''}`}
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center text-[#007BFF] cursor-pointer">
+                    <Grid3X3 size={18} />
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {isSearchExpanded && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute top-11 left-0 w-[500px] bg-white rounded-xl shadow-2xl border border-[#E9ECEF] z-50 overflow-hidden flex"
+                    >
+                      {/* Recent Searches */}
+                      <div className="w-[320px] border-r border-[#E9ECEF] p-4">
+                        <h4 className="text-[11px] font-semibold text-[#6C757D] uppercase tracking-wider mb-4">Ricerche recenti</h4>
+                        <div className="flex flex-col gap-1">
+                          {[
+                            { name: 'Giulia Montessori', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=giulia' },
+                            { name: 'Marianna Felici', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=marianna' },
+                            { name: 'Alessandro Goretti', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=alessandro' },
+                            { name: 'Matteo Verdini', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=matteo' },
+                            { name: 'Francesca Berti', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=francesca' },
+                            { name: 'Roberto Bianchi', sub: 'Sales - 2 numeri', avatar: 'https://i.pravatar.cc/150?u=roberto' },
+                          ].map((item, i) => (
+                            <div 
+                              key={i} 
+                              onMouseEnter={() => setHoveredRecent(i)}
+                              onMouseLeave={() => setHoveredRecent(null)}
+                              className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${hoveredRecent === i ? 'bg-[#E7F1FF]' : 'hover:bg-[#F8F9FA]'}`}
+                            >
+                              <div className="relative shrink-0">
+                                <img src={item.avatar} alt={item.name} className="w-10 h-10 rounded-full object-cover" />
+                                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#28A745] rounded-full border-2 border-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-[#1A1A1A] truncate">{item.name}</p>
+                                <p className="text-[11px] text-[#6C757D]">{item.sub}</p>
+                              </div>
+                              {hoveredRecent === i && (
+                                <div className="flex items-center gap-2 text-[#007BFF]">
+                                  <Video size={14} />
+                                  <MessageSquare size={14} />
+                                  <Phone size={14} />
+                                  <X size={14} className="text-[#6C757D] ml-1" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Dial Pad */}
+                      <div className="flex-1 bg-white p-4 flex flex-col items-center">
+                        <div className="grid grid-cols-3 gap-2 mb-6">
+                          {[
+                            { n: '1', l: '' }, { n: '2', l: 'ABC' }, { n: '3', l: 'DEF' },
+                            { n: '4', l: 'GHI' }, { n: '5', l: 'JKL' }, { n: '6', l: 'MNO' },
+                            { n: '7', l: 'PQRS' }, { n: '8', l: 'TUV' }, { n: '9', l: 'WXYZ' },
+                            { n: '*', l: '' }, { n: '0', l: '+' }, { n: '#', l: '' }
+                          ].map((btn, i) => (
+                            <button 
+                              key={i} 
+                              className="w-10 h-10 bg-[#F1F3F5] rounded-lg flex flex-col items-center justify-center hover:bg-[#E9ECEF] transition-colors"
+                            >
+                              <span className="text-sm font-bold text-[#1A1A1A] leading-none">{btn.n}</span>
+                              {btn.l && <span className="text-[7px] text-[#6C757D] font-bold mt-0.5">{btn.l}</span>}
+                            </button>
+                          ))}
+                        </div>
+                        <button className="w-10 h-12 bg-[#28A745] text-white rounded-lg flex items-center justify-center shadow-md hover:bg-[#218838] transition-colors">
+                          <Phone size={20} fill="currentColor" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -148,104 +277,197 @@ export default function App() {
             </div>
           </aside>
 
-          {/* Category Sidebar */}
-          <aside className="w-[300px] flex flex-col border-r border-[#E9ECEF] bg-white shrink-0 relative">
-            <div className="p-4 flex-1 overflow-y-auto">
-              <div className="flex flex-col gap-1">
-                <CategoryItem 
-                  icon={<Users size={20} />} 
-                  label="Tutti" 
-                  active={activeCategory === 'Tutti'} 
-                  onClick={() => setActiveCategory('Tutti')} 
-                />
-                <CategoryItem 
-                  icon={<ListOrdered size={20} />} 
-                  label="Interni" 
-                  active={activeCategory === 'Interni'} 
-                  onClick={() => setActiveCategory('Interni')} 
-                  showInfo
-                />
-                <CategoryItem 
-                  icon={<Users size={20} />} 
-                  label="Condivisi" 
-                  active={activeCategory === 'Condivisi'} 
-                  onClick={() => setActiveCategory('Condivisi')} 
-                  showInfo
-                />
-                <CategoryItem 
-                  icon={<Users size={20} />} 
-                  label="Personali" 
-                  active={activeCategory === 'Personali'} 
-                  onClick={() => setActiveCategory('Personali')} 
-                  showInfo
-                />
-              </div>
+          {activeNav === 'Contatti' ? (
+            <>
+              {/* Category Sidebar */}
+              <aside className="w-[300px] flex flex-col border-r border-[#E9ECEF] bg-white shrink-0 relative">
+                <div className="p-4 flex-1 overflow-y-auto">
+                  <div className="flex flex-col gap-1">
+                    <CategoryItem 
+                      icon={<Users size={20} />} 
+                      label="Tutti" 
+                      active={activeCategory === 'Tutti'} 
+                      onClick={() => setActiveCategory('Tutti')} 
+                    />
+                    <CategoryItem 
+                      icon={<ListOrdered size={20} />} 
+                      label="Interni" 
+                      active={activeCategory === 'Interni'} 
+                      onClick={() => setActiveCategory('Interni')} 
+                      showInfo
+                    />
+                    <CategoryItem 
+                      icon={<Users size={20} />} 
+                      label="Condivisi" 
+                      active={activeCategory === 'Condivisi'} 
+                      onClick={() => setActiveCategory('Condivisi')} 
+                      showInfo
+                    />
+                    <CategoryItem 
+                      icon={<Users size={20} />} 
+                      label="Personali" 
+                      active={activeCategory === 'Personali'} 
+                      onClick={() => setActiveCategory('Personali')} 
+                      showInfo
+                    />
+                  </div>
 
-              <div className="mt-8 pt-6 border-t border-[#E9ECEF]">
-                <CategoryItem 
-                  icon={<Star size={20} />} 
-                  label="Preferiti" 
-                  active={activeCategory === 'Preferiti'} 
-                  onClick={() => setActiveCategory('Preferiti')} 
-                />
-              </div>
-            </div>
-
-            <button className="absolute bottom-6 right-6 w-12 h-12 bg-[#007BFF] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#0056b3] transition-colors">
-              <Plus size={24} />
-            </button>
-          </aside>
-
-          {/* Main Content Area */}
-          <main className="flex-1 flex flex-col min-w-0 bg-white">
-            <header className="h-14 flex items-center justify-between px-6 border-b border-[#E9ECEF] shrink-0">
-              <h1 className="text-xl font-medium text-[#1A1A1A]">{activeCategory}</h1>
-              
-              <div className="flex items-center gap-4">
-                <div className="relative w-64">
-                  <input 
-                    type="text" 
-                    placeholder="Cerca..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-9 pl-4 pr-10 bg-white border border-[#CED4DA] rounded-full text-sm focus:outline-none focus:border-[#007BFF]"
-                  />
-                  <div className="absolute inset-y-0 right-3 flex items-center text-[#6C757D]">
-                    <Search size={16} />
+                  <div className="mt-8 pt-6 border-t border-[#E9ECEF]">
+                    <CategoryItem 
+                      icon={<Star size={20} />} 
+                      label="Preferiti" 
+                      active={activeCategory === 'Preferiti'} 
+                      onClick={() => setActiveCategory('Preferiti')} 
+                    />
                   </div>
                 </div>
-                <button className="p-2 text-[#6C757D] hover:text-[#1A1A1A] transition-colors">
-                  <RefreshCw size={20} />
-                </button>
-              </div>
-            </header>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              {(Object.entries(groupedContacts) as [string, Contact[]][]).map(([letter, contacts]) => (
-                <div key={letter} className="mb-8">
-                  <h2 className="text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-3 px-2">
-                    {letter}
-                  </h2>
-                  <div className="flex flex-col gap-1">
-                    {contacts.map(contact => (
-                      <ContactRow 
-                        key={contact.id} 
-                        contact={contact} 
-                        isHovered={hoveredContact === contact.id}
-                        onHover={() => setHoveredContact(contact.id)}
-                        onLeave={() => setHoveredContact(null)}
-                      />
+                <button className="absolute bottom-6 right-6 w-12 h-12 bg-[#007BFF] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#0056b3] transition-colors">
+                  <Plus size={24} />
+                </button>
+              </aside>
+
+              {/* Main Content Area - Contacts */}
+              <main className="flex-1 flex flex-col min-w-0 bg-white">
+                <header className="h-16 border-b border-[#E9ECEF] shrink-0">
+                  <div className="max-w-[1024px] mx-auto h-full flex items-center justify-between px-4">
+                    <h1 className="text-[22px] font-medium text-[#1A1A1A]">{activeCategory}</h1>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-64">
+                        <input 
+                          type="text" 
+                          placeholder="Cerca..." 
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full h-9 pl-4 pr-10 bg-white border border-[#CED4DA] rounded-full text-sm focus:outline-none focus:border-[#007BFF]"
+                        />
+                        <div className="absolute inset-y-0 right-3 flex items-center text-[#6C757D]">
+                          <Search size={16} />
+                        </div>
+                      </div>
+                      <button className="p-2 text-[#6C757D] hover:text-[#1A1A1A] transition-colors">
+                        <RefreshCw size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </header>
+
+                <div className="flex-1 overflow-y-auto">
+                  <div className="max-w-[1024px] mx-auto py-6 px-4">
+                    {(Object.entries(groupedContacts) as [string, Contact[]][]).map(([letter, contacts]) => (
+                      <div key={letter} className="mb-8">
+                        <h2 className="text-xs font-semibold text-[#6C757D] uppercase tracking-wider mb-3 px-2">
+                          {letter}
+                        </h2>
+                        <div className="flex flex-col gap-1">
+                          {contacts.map(contact => (
+                            <ContactRow 
+                              key={contact.id} 
+                              contact={contact} 
+                              isHovered={hoveredContact === contact.id}
+                              onHover={() => setHoveredContact(contact.id)}
+                              onLeave={() => setHoveredContact(null)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
-              ))}
+              </main>
+            </>
+          ) : activeNav === 'Recenti' ? (
+            <main className="flex-1 flex flex-col min-w-0 bg-white">
+              <header className="h-16 border-b border-[#E9ECEF] shrink-0">
+                <div className="max-w-[1024px] mx-auto h-full flex items-center justify-between px-4">
+                  <h1 className="text-[22px] font-medium text-[#1A1A1A]">Chiamate recenti</h1>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex bg-[#F1F3F5] p-1 rounded-lg">
+                      {(['Tutte', 'In uscita', 'In entrata', 'Perse'] as const).map((filter) => (
+                        <button
+                          key={filter}
+                          onClick={() => setActiveCallFilter(filter)}
+                          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                            activeCallFilter === filter 
+                              ? 'bg-[#007BFF] text-white shadow-sm' 
+                              : 'text-[#495057] hover:bg-[#E9ECEF]'
+                          }`}
+                        >
+                          {filter}
+                        </button>
+                      ))}
+                    </div>
+                    <button className="p-2 text-[#6C757D] hover:text-[#1A1A1A] transition-colors">
+                      <MoreVertical size={20} />
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <div className="flex-1 overflow-y-auto">
+                <div className="max-w-[1024px] mx-auto py-6 px-4 flex flex-col gap-2">
+                  {filteredCalls.map(call => (
+                    <CallRow key={call.id} call={call} />
+                  ))}
+                </div>
+              </div>
+            </main>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-[#6C757D]">
+              Sezione {activeNav} in fase di sviluppo
             </div>
-          </main>
+          )}
         </div>
       </div>
     </>
   );
 }
+
+const CallRow: React.FC<{ call: Call }> = ({ call }) => {
+  const isMissed = call.type === 'missed';
+  
+  return (
+    <div className="flex items-center gap-4 p-3 bg-[#F1F3F5] rounded-xl hover:bg-[#E9ECEF] transition-colors group">
+      <div className="relative shrink-0">
+        <img 
+          src={call.contact.avatar} 
+          alt={call.contact.name} 
+          className="w-12 h-12 rounded-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border border-[#F1F3F5] group-hover:border-[#E9ECEF] ${call.contact.status === 'online' ? 'bg-[#28A745]' : 'bg-[#ADB5BD]'}`} />
+      </div>
+      
+      <div className="flex items-center justify-center w-8 h-8">
+        {call.type === 'incoming' && <PhoneIncoming size={18} className="text-[#007BFF]" />}
+        {call.type === 'outgoing' && <PhoneOutgoing size={18} className="text-[#6C757D]" />}
+        {call.type === 'missed' && <PhoneMissed size={18} className="text-[#DC3545]" />}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <h3 className={`text-sm font-medium truncate ${isMissed ? 'text-[#DC3545]' : 'text-[#1A1A1A]'}`}>
+          {call.contact.name}
+        </h3>
+        <p className="text-xs text-[#6C757D]">{call.internalInfo}</p>
+      </div>
+
+      <div className="text-right shrink-0 mr-4">
+        <p className="text-[11px] text-[#6C757D] leading-tight">
+          {call.timestamp.split(' ').slice(0, 2).join(' ')}
+        </p>
+        <p className="text-[11px] text-[#6C757D] leading-tight">
+          {call.timestamp.split(' ').slice(2).join(' ')}
+        </p>
+      </div>
+
+      <button className="p-2 text-[#007BFF] hover:bg-[#D0E4FF] rounded-full transition-colors">
+        <Info size={20} />
+      </button>
+    </div>
+  );
+};
 
 function SidebarIcon({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
@@ -284,16 +506,16 @@ const ContactRow: React.FC<{
     <div 
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
-      className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200 ${isHovered ? 'bg-[#E7F1FF]' : 'bg-[#F1F3F5] hover:bg-[#E9ECEF]'}`}
+      className={`flex items-center gap-4 p-3 rounded-xl cursor-pointer transition-all duration-200 group ${isHovered ? 'bg-[#E7F1FF]' : 'bg-[#F1F3F5] hover:bg-[#E9ECEF]'}`}
     >
       <div className="relative shrink-0">
         <img 
           src={contact.avatar} 
           alt={contact.name} 
-          className="w-12 h-12 rounded-full object-cover border-2 border-white"
+          className="w-12 h-12 rounded-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${contact.status === 'online' ? 'bg-[#28A745]' : 'bg-[#ADB5BD]'}`} />
+        <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border ${isHovered ? 'border-[#E7F1FF]' : 'border-[#F1F3F5] group-hover:border-[#E9ECEF]'} ${contact.status === 'online' ? 'bg-[#28A745]' : 'bg-[#ADB5BD]'}`} />
       </div>
       
       <div className="flex-1 min-w-0">
