@@ -18,7 +18,9 @@ import {
   PhoneOutgoing,
   PhoneMissed,
   MoreVertical,
-  X
+  X,
+  Contact as ContactIcon,
+  Headset
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Contact, Category, NavItem, Call, CallType } from './types';
@@ -239,37 +241,42 @@ export default function App() {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Main Sidebar (Icons) */}
-          <aside className="w-[72px] flex flex-col items-center py-6 border-r border-[#E9ECEF] bg-white shrink-0">
+          <aside className="w-[72px] flex flex-col items-center py-4 border-r border-[#E9ECEF] bg-white shrink-0">
             <nav className="flex flex-col gap-8 items-center flex-1">
               <SidebarIcon 
-                icon={<Users size={24} />} 
+                icon={<ContactIcon size={20} />} 
                 label="Contatti" 
                 active={activeNav === 'Contatti'} 
                 onClick={() => setActiveNav('Contatti')} 
               />
               <SidebarIcon 
-                icon={<History size={24} />} 
+                icon={<Phone size={20} />} 
                 label="Recenti" 
                 active={activeNav === 'Recenti'} 
                 onClick={() => setActiveNav('Recenti')} 
               />
               <SidebarIcon 
-                icon={<Video size={24} />} 
+                icon={<Video size={20} />} 
                 label="Meeting" 
                 active={activeNav === 'Meeting'} 
                 onClick={() => setActiveNav('Meeting')} 
               />
               <SidebarIcon 
-                icon={<ListOrdered size={24} />} 
+                icon={<Users size={20} />} 
                 label="Code" 
                 active={activeNav === 'Code'} 
                 onClick={() => setActiveNav('Code')} 
+                badge={
+                  <div className="w-6 h-6 bg-[#D0E4FF] rounded-full border-2 border-white flex items-center justify-center text-[#007BFF]">
+                    <Headset size={14} strokeWidth={2.5} />
+                  </div>
+                }
               />
             </nav>
 
             <div className="mt-auto">
               <SidebarIcon 
-                icon={<Settings size={24} />} 
+                icon={<Settings size={20} />} 
                 label="Impostazioni" 
                 active={activeNav === 'Impostazioni'} 
                 onClick={() => setActiveNav('Impostazioni')} 
@@ -469,16 +476,21 @@ const CallRow: React.FC<{ call: Call }> = ({ call }) => {
   );
 };
 
-function SidebarIcon({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+function SidebarIcon({ icon, label, active, onClick, badge }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void, badge?: React.ReactNode }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 group transition-colors ${active ? 'text-[#007BFF]' : 'text-[#6C757D] hover:text-[#1A1A1A]'}`}
+      className={`flex flex-col items-center gap-1 group transition-colors ${active ? 'text-[#007BFF]' : 'text-[#343A40] hover:text-[#1A1A1A]'}`}
     >
-      <div className={`p-2 rounded-lg transition-colors ${active ? 'bg-[#E7F1FF]' : 'group-hover:bg-[#F8F9FA]'}`}>
+      <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors relative ${active ? 'bg-[#007BFF] text-white' : 'bg-[#F1F3F5] text-[#343A40] group-hover:bg-[#E9ECEF]'}`}>
         {icon}
+        {badge && (
+          <div className="absolute -top-1 -right-1">
+            {badge}
+          </div>
+        )}
       </div>
-      <span className="text-[10px] font-medium">{label}</span>
+      <span className={`text-[11px] font-medium ${active ? 'text-[#007BFF]' : 'text-[#343A40]'}`}>{label}</span>
     </button>
   );
 }
