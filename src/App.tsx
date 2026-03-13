@@ -64,22 +64,28 @@ export default function App() {
   const [activeCallFilter, setActiveCallFilter] = useState<'Tutte' | 'In uscita' | 'In entrata' | 'Perse'>('Tutte');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [hoveredRecent, setHoveredRecent] = useState<number | null>(null);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const addMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchExpanded(false);
       }
+      if (addMenuRef.current && !addMenuRef.current.contains(event.target as Node)) {
+        setIsAddMenuOpen(false);
+      }
     };
 
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsSearchExpanded(false);
+        setIsAddMenuOpen(false);
       }
     };
 
-    if (isSearchExpanded) {
+    if (isSearchExpanded || isAddMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscKey);
     }
@@ -88,7 +94,7 @@ export default function App() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscKey);
     };
-  }, [isSearchExpanded]);
+  }, [isSearchExpanded, isAddMenuOpen]);
 
   const filteredContacts = useMemo(() => {
     return MOCK_CONTACTS.filter(c => {
@@ -364,9 +370,38 @@ export default function App() {
                   </div>
                 </div>
 
-                <button className="absolute bottom-6 right-6 w-9 h-9 bg-[#007BFF] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#0056b3] transition-colors">
-                  <Plus size={20} />
-                </button>
+                <div ref={addMenuRef}>
+                  <AnimatePresence>
+                    {isAddMenuOpen && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-[70px] left-4 right-4 bg-white rounded-[5px] shadow-2xl border border-[#E9ECEF] overflow-hidden z-50"
+                      >
+                        <button 
+                          onClick={() => setIsAddMenuOpen(false)}
+                          className="w-full px-4 py-3 text-[13px] text-[#007BFF] font-medium hover:bg-[#F8F9FA] transition-colors text-center border-b border-[#E9ECEF]"
+                        >
+                          Crea nuovo contatto personale
+                        </button>
+                        <button 
+                          onClick={() => setIsAddMenuOpen(false)}
+                          className="w-full px-4 py-3 text-[13px] text-[#007BFF] font-medium hover:bg-[#F8F9FA] transition-colors text-center"
+                        >
+                          Aggiungi preferiti
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button 
+                    onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
+                    className={`absolute bottom-6 right-6 w-9 h-9 bg-[#007BFF] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#0056b3] transition-all duration-200 z-50`}
+                  >
+                    {isAddMenuOpen ? <X size={20} /> : <Plus size={20} />}
+                  </button>
+                </div>
               </aside>
 
               {/* Main Content Area - Contacts */}
