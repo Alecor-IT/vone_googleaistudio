@@ -1,9 +1,12 @@
 export interface Contact {
   id: string;
   name: string;
-  department: string;
+  department?: string;
   status: 'online' | 'offline' | 'busy';
   avatar: string;
+  phone: string;
+  type: 'interno' | 'condiviso' | 'personale';
+  isFavorite?: boolean;
 }
 
 export type CallType = 'incoming' | 'outgoing' | 'missed';
